@@ -117,6 +117,15 @@ prompt = "Many spotted jellyfish pulsating under water."
 video = pipe(prompt, max_latent_length=9).frames[0]
 export_to_video(video, "jellyfish.mp4", fps=12)
 
+# Increase AR and diffusion steps for better video quality.
+video = pipe(
+  prompt,
+  max_latent_length=9,
+  num_inference_steps=128,  # default: 64
+  num_diffusion_steps=100,  # default: 25
+).frames[0]
+export_to_video(video, "jellyfish_v2.mp4", fps=12)
+
 # You can also generate images from text, with the first frame as an image.
 prompt = "Many spotted jellyfish pulsating under water."
 image = pipe(prompt, max_latent_length=1).frames[0, 0]

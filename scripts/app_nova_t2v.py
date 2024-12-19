@@ -141,8 +141,8 @@ if __name__ == "__main__":
     randomize_seed = gr.Checkbox(label="Randomize seed", value=True)
     guidance_scale = gr.Slider(label="Guidance scale", minimum=1, maximum=10.0, step=0.1, value=7.0)
     with gr.Row():
-        num_inference_steps = gr.Slider(label="Inference steps", minimum=1, maximum=128, step=1, value=64) # noqa
-        num_diffusion_steps = gr.Slider(label="Diffusion steps", minimum=1, maximum=50, step=1, value=25)  # noqa
+        num_inference_steps = gr.Slider(label="Inference steps", minimum=1, maximum=128, step=1, value=128)  # noqa
+        num_diffusion_steps = gr.Slider(label="Diffusion steps", minimum=1, maximum=100, step=1, value=100)  # noqa
     adv_opt.__exit__()
     generate = gr.Button("Generate Video", variant="primary", size="lg")
     input_col.__exit__()
