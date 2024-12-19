@@ -32,7 +32,6 @@ We present **NOVA** (**NO**n-Quantized **V**ideo **A**utoregressive Model), a mo
 ### Text to Image
 <a id="text-to-image-weight"></a>
 
-
 | Model       | Parameters | Resolution | Data |  Weight                                                               | GenEval | DPGBench |
 |:-----------:|:----------:|:----------:|:----:|:---------------------------------------------------------------------:|:--------:|:-------:|
 | NOVA-0.6B   | 0.6B       | 512x512    | 16M  | [🤗 HF link](https://huggingface.co/BAAI/nova-d48w1024-sd512)          | 0.75   |   81.76   |
@@ -50,7 +49,7 @@ We present **NOVA** (**NO**n-Quantized **V**ideo **A**utoregressive Model), a mo
 ## 📖Table of Contents
 - [1. Installation](#1-installation)
   - [1.1 From Source](#from-source)
-  - [1.2 Using pip](#using-pip)
+  - [1.2 From Git](#from-git)
 - [2. Quick Start](#2-quick-start)
   - [2.1 Text to Image](#text-to-image-quickstart)
   - [2.2 Text to Video](#text-to-video-quickstart)
@@ -71,23 +70,19 @@ git clone https://github.com/baaivision/NOVA.git
 cd NOVA && pip install .
 ```
 
+### 1.2 From Git
+<a id="from-git"></a>
 
-### 1.2 Using pip
-<a id="using-pip"></a>
-
-You can also install from the remote repository: 
+You can also install from the remote repository **if you have set your Github SSH key**: 
 
 ```bash
 pip install diffusers transformers accelerate imageio[ffmpeg]
 pip install git+ssh://git@github.com/baaivision/NOVA.git
 ```
 
-
-
 ## 2. Quick Start
 ### 2.1 Text to Image
 <a id="text-to-image-quickstart"></a>
-
 
 ```python
 import torch
@@ -104,11 +99,8 @@ image = pipe(prompt).images[0]
 image.save("shiba_inu.jpg")
 ```
 
-
 ### 2.2  Text to Video
 <a id="text-to-video-quickstart"></a>
-
-
 
 ```python
 import torch
@@ -131,10 +123,7 @@ image = pipe(prompt, max_latent_length=1).frames[0, 0]
 export_to_image(image, "jellyfish.jpg")
 ```
 
-
 ## 3. Gradio Demo
-
-
 
 ```bash
 # For text-to-image demo
@@ -153,7 +142,6 @@ python scripts/app_nova_t2v.py --model "BAAI/nova-d48w1024-osp480" --device 0
 ## 6. Evaluation
 - See [Evaluation Guide](./docs/evaluation.md)
 
-
 ## 📋Todo List
 - [X] [Model zoo](#2-model-zoo)
 - [X] [Quick Start](#3-quick-start)
@@ -165,7 +153,6 @@ python scripts/app_nova_t2v.py --model "BAAI/nova-d48w1024-osp480" --device 0
 - [ ] Prompt Writer
 - [ ] Larger model size
 - [ ] Additional downstream tasks: Image editing, Video editing, Controllable generation
-
 
 ## Citation
 If you find this repository useful, please consider giving a star ⭐ and citation 🦖:
