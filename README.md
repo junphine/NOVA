@@ -18,7 +18,7 @@
 We present **NOVA** (**NO**n-Quantized **V**ideo **A**utoregressive Model), a model that enables autoregressive image/video generation with high efficiency. **NOVA** reformulates the video generation problem as non-quantized autoregressive modeling of temporal *frame-by-frame* prediction and spatial *set-by-set* prediction. **NOVA** generalizes well and enables diverse zero-shot generation abilities in one unified model.
 
 ## 🚀News
-- ```[Dec 2024]``` Released [paper](https://arxiv.org/abs/2412.14169), [weights](#2-model-zoo), and [Quick Start](#3-quick-start) guide and [Gradio Demo](#4-gradio-demo) code.
+- ```[Dec 2024]``` Released [paper](https://arxiv.org/abs/2412.14169), [weights](#model-zoo), and [Quick Start](#2-quick-start) guide and [Gradio Demo](#3-gradio-demo) code.
 
 ## ✨Hightlights
 
@@ -27,6 +27,7 @@ We present **NOVA** (**NO**n-Quantized **V**ideo **A**utoregressive Model), a mo
 - 🔥 **Unified Modeling**: Multi-task capabilities in a single unified model.
 
 ## 🗄️Model Zoo
+<a id="model-zoo"></a>
 > See detailed description in [Model Zoo](./docs/model_zoo.md)
 
 ### Text to Image
@@ -152,9 +153,9 @@ python scripts/app_nova_t2v.py --model "BAAI/nova-d48w1024-osp480" --device 0
 - See [Evaluation Guide](./docs/evaluation.md)
 
 ## 📋Todo List
-- [X] [Model zoo](#2-model-zoo)
-- [X] [Quick Start](#3-quick-start)
-- [X] [Gradio Demo](#4-gradio-demo)
+- [X] [Model zoo](#model-zoo)
+- [X] [Quick Start](#2-quick-start)
+- [X] [Gradio Demo](#3-gradio-demo)
 - [ ] Inference guide
 - [ ] Finetuning code
 - [ ] Training code
