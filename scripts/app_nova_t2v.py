@@ -132,7 +132,8 @@ if __name__ == "__main__":
     )
     negative_prompt = gr.Text(
         label="Negative Prompt",
-        value="low quality, deformed, distorted, disfigured, fused fingers, bad anatomy, weird hand, motion smear, motion artifacts",  # noqa
+        placeholder="Describe what you don't want in the video",
+        value="",
         lines=1,
     )
     image_prompt = gr.Image(label="Image Prompt (Optional) ", type="pil")
