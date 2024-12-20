@@ -4,7 +4,8 @@
 
 <p align="center">
 <a href="https://arxiv.org/abs/2412.14169"><img src="https://img.shields.io/badge/ArXiv-2412.14169-%23840707.svg" alt="ArXiv"></a>
-<a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-sdxl1024"><img src="https://img.shields.io/badge/Demo-T2I-%26840707.svg" alt="T2IDemo"></a>
+<a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-sdxl1024"><img src="https://img.shields.io/badge/🤗 Demo-T2I-%26840707.svg" alt="T2IDemo"></a>
+<a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-osp480"><img src="https://img.shields.io/badge/🤗 Demo-T2V-%26840707.svg" alt="T2VDemo"></a>
 <a href="https://novamodel.github.io/"><img src="https://img.shields.io/badge/Webpage-NOVA-%237CB4F7.svg" alt="Webpage"></a>
 </p>
 
