@@ -74,7 +74,8 @@ def generate_video(
     args["max_latent_length"] = preset["#latents"]
     args["image"] = crop_image(image_prompt, preset["h"], preset["w"]) if image_prompt else None
     seed = np.random.randint(2147483647) if randomize_seed else seed
-    generator = torch.Generator(device=pipe.device).manual_seed(seed)
+    device = getattr(pipe, "_offload_device", pipe.device)
+    generator = torch.Generator(device=device).manual_seed(seed)
     frames = pipe(generator=generator, **args).frames[0]
     return export_to_video(frames, fps=12), seed
 

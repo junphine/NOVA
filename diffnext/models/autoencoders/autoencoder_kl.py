@@ -204,7 +204,7 @@ class AutoencoderKL(ModelMixin, ConfigMixin):
 
     def encode(self, x) -> AutoencoderKLOutput:
         """Encode the input samples."""
-        z = self.quant_conv(self.encoder(x))
+        z = self.quant_conv(self.encoder(self.forward(x)))
         posterior = DiagonalGaussianDistribution(z)
         return AutoencoderKLOutput(latent_dist=posterior)
 

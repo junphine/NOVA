@@ -249,7 +249,7 @@ class AutoencoderKLOpenSora(ModelMixin, ConfigMixin, TilingMixin):
     def encode(self, x) -> AutoencoderKLOutput:
         """Encode the input samples."""
         extra_dim = 2 if isinstance(self.quant_conv, Conv3d) and x.dim() == 4 else None
-        z = self.tiled_encoder(x)
+        z = self.tiled_encoder(self.forward(x))
         z = self.quant_conv(z)
         z = z.squeeze_(extra_dim) if extra_dim is not None else z
         posterior = DiagonalGaussianDistribution(z)

@@ -50,7 +50,8 @@ def generate_image4(
     """Generate 4 images."""
     args = locals()
     seed = np.random.randint(2147483647) if randomize_seed else seed
-    generator = torch.Generator(device=pipe.device).manual_seed(seed)
+    device = getattr(pipe, "_offload_device", pipe.device)
+    generator = torch.Generator(device=device).manual_seed(seed)
     images = pipe(generator=generator, num_images_per_prompt=4, **args).images
     return [export_to_image(image, quality=95) for image in images] + [seed]
 
