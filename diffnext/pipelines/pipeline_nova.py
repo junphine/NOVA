@@ -42,6 +42,7 @@ class NOVAPipeline(DiffusionPipeline):
     """NOVA autoregressive diffusion pipeline."""
 
     _optional_components = ["transformer", "scheduler", "vae", "text_encoder", "tokenizer"]
+    model_cpu_offload_seq = "text_encoder->transformer->vae"
 
     def __init__(
         self,
@@ -109,7 +110,7 @@ class NOVAPipeline(DiffusionPipeline):
         """
         self.guidance_scale = guidance_scale
         num_patches = int(np.prod(self.transformer.config.image_base_size))
-        inputs = {"generator": generator, "vae": self.vae, "latents": [], **locals()}
+        inputs = {"generator": generator, "latents": [], **locals()}
         mask_ratios = np.cos(0.5 * np.pi * np.arange(num_inference_steps + 1) / num_inference_steps)
         mask_length = np.round(mask_ratios * num_patches).astype("int64")
         inputs["num_preds"] = mask_length[:-1] - mask_length[1:]
@@ -118,10 +119,8 @@ class NOVAPipeline(DiffusionPipeline):
         inputs["latents"] = self.prepare_latents(image, num_images_per_prompt, generator)
         inputs["batch_size"] = len(inputs["prompt"]) // (2 if guidance_scale > 1 else 1)
         inputs["motion_flow"] = [motion_flow] * inputs["batch_size"]
-        self.transformer.preprocess(inputs)
-        self.transformer.generate_video(inputs)
-        outputs = {"x": torch.stack(inputs["latents"], dim=2)}
-        self.transformer.postprocess(outputs, inputs)
+        _, outputs = inputs.pop("self"), self.transformer(inputs)
+        self.transformer.postprocess(outputs, {"vae": self.vae, **inputs})
         if output_type in ("latent", "pt"):
             return outputs["x"]
         outputs["x"] = outputs["x"].cpu().numpy()

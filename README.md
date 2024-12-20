@@ -111,7 +111,12 @@ from diffnext.utils import export_to_image, export_to_video
 model_id = "BAAI/nova-d48w1024-osp480"
 model_args = {"torch_dtype": torch.float16, "trust_remote_code": True}
 pipe = NOVAPipeline.from_pretrained(model_id, **model_args)
+
+# Standard device routine.
 pipe = pipe.to("cuda")
+# Use CPU model offload routine and expandable allocator if OOM.
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+# pipe.enable_model_cpu_offload()
 
 # Text to Video
 prompt = "Many spotted jellyfish pulsating under water."

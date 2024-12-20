@@ -151,6 +151,4 @@ class Transformer3DModel(nn.Module):
         self.preprocess(inputs)
         inputs["latents"] = inputs.pop("latents", [])
         self.generate_video(inputs)
-        outputs = {"x": torch.stack(inputs["latents"], dim=2)}
-        self.postprocess(outputs, inputs)
-        return outputs
+        return {"x": torch.stack(inputs["latents"], dim=2)}

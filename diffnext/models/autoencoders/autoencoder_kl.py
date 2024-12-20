@@ -211,5 +211,8 @@ class AutoencoderKL(ModelMixin, ConfigMixin):
     def decode(self, z) -> DecoderOutput:
         """Decode the input latents."""
         z = z.squeeze_(2) if z.dim() == 5 else z
-        x = self.decoder(self.post_quant_conv(z))
+        x = self.decoder(self.post_quant_conv(self.forward(z)))
         return DecoderOutput(sample=x)
+
+    def forward(self, x):  # NOOP.
+        return x

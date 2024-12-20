@@ -259,7 +259,10 @@ class AutoencoderKLOpenSora(ModelMixin, ConfigMixin, TilingMixin):
         """Decode the input latents."""
         extra_dim = 2 if isinstance(self.quant_conv, Conv3d) and z.dim() == 4 else None
         z = z.unsqueeze_(extra_dim) if extra_dim is not None else z
-        z = self.post_quant_conv(z)
+        z = self.post_quant_conv(self.forward(z))
         x = self.tiled_decoder(z)
         x = x.squeeze_(extra_dim) if extra_dim is not None else x
         return DecoderOutput(sample=x)
+
+    def forward(self, x):  # NOOP.
+        return x

@@ -145,6 +145,7 @@ class TextEmbed(nn.Module):
         maxlens = [len(tokenizer(p, **trunc_args).input_ids) for p in prompts]
         tokens = torch.as_tensor(tokens, device=encoder.device)
         embeds = encoder(tokens).last_hidden_state.to(dtype=dtype)
+        x = x.to(device=encoder.device)
         for i, maxlen in enumerate(maxlens):
             x[i, :maxlen] = embeds[i, :maxlen]
         return x
