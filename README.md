@@ -6,7 +6,7 @@
 <a href="https://arxiv.org/abs/2412.14169"><img src="https://img.shields.io/badge/ArXiv-2412.14169-%23840707.svg" alt="ArXiv"></a>
 <a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-sdxl1024"><img src="https://img.shields.io/badge/🤗 Demo-T2I-%26840707.svg" alt="T2IDemo"></a>
 <a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-osp480"><img src="https://img.shields.io/badge/🤗 Demo-T2V-%26840707.svg" alt="T2VDemo"></a>
-<a href="https://novamodel.github.io/"><img src="https://img.shields.io/badge/Webpage-NOVA-%237CB4F7.svg" alt="Webpage"></a>
+<a href="http://bitterdhg.github.io/NOVA_page"><img src="https://img.shields.io/badge/Webpage-NOVA-%237CB4F7.svg" alt="Webpage"></a>
 </p>
 
 [Haoge Deng](https://scholar.google.com/citations?user=S2sbvjgAAAAJ&hl=zh-CN&oi=ao)<sup>1,4*</sup>, [Ting Pan](https://scholar.google.com/citations?&user=qQv6YbsAAAAJ)<sup>2,4*</sup>, [Haiwen Diao](https://scholar.google.com/citations?user=46eCjHQAAAAJ&hl=zh-CN)<sup>3,4*</sup>, [Zhengxiong Luo](https://scholar.google.com/citations?user=Sz1yTZsAAAAJ&hl=zh-CN)<sup>4*</sup>, [Yufeng Cui](https://scholar.google.com/citations?user=5Ydha2EAAAAJ&hl=zh-CN)<sup>4</sup><br>
@@ -20,6 +20,7 @@
 We present **NOVA** (**NO**n-Quantized **V**ideo **A**utoregressive Model), a model that enables autoregressive image/video generation with high efficiency. **NOVA** reformulates the video generation problem as non-quantized autoregressive modeling of temporal *frame-by-frame* prediction and spatial *set-by-set* prediction. **NOVA** generalizes well and enables diverse zero-shot generation abilities in one unified model.
 
 ## 🚀News
+- ```[Dec 2024]``` Released [Project Page](http://bitterdhg.github.io/NOVA_page)
 - ```[Dec 2024]``` Released 🤗 Online Demo (<a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-sdxl1024"><b>T2I</b></a>, <a href="https://huggingface.co/spaces/BAAI/nova-d48w1024-osp480"><b>T2V</b></a>)
 - ```[Dec 2024]``` Released [paper](https://arxiv.org/abs/2412.14169), [weights](#model-zoo), and [Quick Start](#2-quick-start) guide and Gradio Demo [local code](#3-gradio-demo) .
 
