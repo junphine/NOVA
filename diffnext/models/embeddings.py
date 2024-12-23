@@ -17,6 +17,8 @@
 
 from typing import Tuple
 
+import numpy as np
+import scipy.stats as stats
 import torch
 from torch import nn
 
@@ -158,18 +160,20 @@ class PatchEmbed(nn.Module):
 class TextEmbed(nn.Module):
     """Encode text tokens into embeddings."""
 
-    def __init__(self, token_dim, embed_dim, num_tokens=256):
+    def __init__(self, token_dim, embed_dim, num_tokens=256, dropout=0.1):
         super(TextEmbed, self).__init__()
         self.token_dim, self.num_tokens, self.encoders = token_dim, num_tokens, []
         self.proj, self.norm = nn.Linear(token_dim, embed_dim), nn.LayerNorm(embed_dim)
         self.register_buffer("weight", torch.zeros(512, token_dim))  # Maximum positions.
-        nn.init.normal_(self.weight, std=0.02)
+        _, self.dropout = nn.init.normal_(self.weight, std=0.02), dropout
 
     @torch.no_grad()
     def encode_prompts(self, prompts) -> torch.Tensor:
         device, dtype = self.weight.device, self.weight.dtype
         x = self.weight[: self.num_tokens].expand(len(prompts), -1, -1).clone()
         for i, p in enumerate(prompts if not isinstance(prompts[0], str) else []):
+            if self.training and self.dropout > 0 and np.random.rand() < self.dropout:
+                continue
             x[i, : p.shape[0]] = torch.as_tensor(p, device=device).to(dtype)
         if not isinstance(prompts[0], str):
             return x
@@ -182,6 +186,8 @@ class TextEmbed(nn.Module):
         embeds = encoder(tokens).last_hidden_state.to(dtype=dtype)
         x = x.to(device=encoder.device)
         for i, maxlen in enumerate(maxlens):
+            if self.training and self.dropout > 0 and np.random.rand() < self.dropout:
+                continue
             x[i, :maxlen] = embeds[i, :maxlen]
         return x
 
@@ -196,12 +202,23 @@ class MaskEmbed(nn.Module):
 
     def __init__(self, embed_dim, mask_ratios=(0.7, 1.0)):
         super(MaskEmbed, self).__init__()
-        self.mask_ratios = mask_ratios
+        self.mask_ratios = list(mask_ratios) + ([0.25] if len(mask_ratios) == 2 else [])
         self.bos_token = nn.Parameter(torch.zeros(1, embed_dim))
         self.mask_token = nn.Parameter(torch.zeros(1, embed_dim))
         [nn.init.normal_(_, std=0.02) for _ in (self.bos_token, self.mask_token)]
         self.mask, self.attn_mask = None, None
         self.pred_ids, self.pred_pos, self.generator = None, 0, None
+
+    def get_attn_mask(self, x, c=None, persistent=True) -> torch.Tensor:
+        """Return the attention mask according to inputs."""
+        if self.attn_mask is not None and persistent:
+            return self.attn_mask
+        t, s = x.shape[1:3] if x.dim() == 4 else (1, x.size(1))
+        d = torch.cat([torch.full([s], i, dtype=torch.float32) for i in range(t)])
+        d = torch.cat([torch.full([c.size(1)], 0, dtype=d.dtype), d]) if c is not None else d
+        self.attn_mask = torch.where(d.unsqueeze(1).ge(d.unsqueeze(0)), 0, -float("inf"))
+        self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device)
+        return self.attn_mask
 
     def get_pred_mask(self, num_preds) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return the current mask for next prediction."""
@@ -218,6 +235,13 @@ class MaskEmbed(nn.Module):
         return x.mul(1 - self.mask).add_(self.mask_token * self.mask)
 
     def forward(self, x) -> torch.Tensor:
+        if self.training:
+            u_dist = torch.rand(x.shape[:-1] + (1,), device=x.device)
+            a, b = [(v - 1) / self.mask_ratios[2] for v in self.mask_ratios[:2]]
+            mask_ratio = stats.truncnorm(a, b, loc=1, scale=self.mask_ratios[2]).rvs(1)[0]
+            prev_ids = u_dist.argsort(1)[:, : int(np.round((1 - mask_ratio) * u_dist.size(1)))]
+            self.mask = x.new_ones(u_dist.shape).scatter_(1, prev_ids, 0)
+            return self.apply_mask(x), prev_ids
         if self.mask is None:
             self.mask, self.pred_pos = x.new_ones(x.shape[:-1] + (1,)), 0
         return self.apply_mask(x)
