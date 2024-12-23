@@ -19,8 +19,8 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 
 from diffnext.models.diffusion_mlp import DiffusionMLP
+from diffnext.models.embeddings import PosEmbed, VideoPosEmbed, RotaryEmbed3D
 from diffnext.models.embeddings import MaskEmbed, MotionEmbed, TextEmbed
-from diffnext.models.embeddings import PosEmbed, VideoPosEmbed
 from diffnext.models.normalization import AdaLayerNorm
 from diffnext.models.transformers.transformer_3d import Transformer3DModel
 from diffnext.models.vision_transformer import VisionTransformer
@@ -67,6 +67,7 @@ class NOVATransformer3DModel(Transformer3DModel, ModelMixin, ConfigMixin):
         image_base_size=None,
         video_base_size=None,
         video_mixer_rank=None,
+        rotary_pos_embed=False,
         arch=("", "", ""),
     ):
         image_size = (image_size,) * 2 if isinstance(image_size, int) else image_size
@@ -76,7 +77,13 @@ class NOVATransformer3DModel(Transformer3DModel, ModelMixin, ConfigMixin):
         video_encoder = VIDEO_ENCODERS.get(arch[0])(image_size=image_size, **video_args)
         image_encoder = IMAGE_ENCODERS.get(arch[1])(image_size=image_size, **image_args)
         image_decoder = IMAGE_DECODERS.get(arch[2])(cond_dim=image_encoder.embed_dim, **image_args)
-        image_encoder.pos_embed = PosEmbed(image_encoder.embed_dim, image_base_size)
+        if rotary_pos_embed:
+            video_pos_embed = RotaryEmbed3D(video_encoder.rope.dim, video_base_size[1:])
+            image_pos_embed = RotaryEmbed3D(image_encoder.rope.dim, image_base_size)
+        else:
+            video_pos_embed = VideoPosEmbed(video_encoder.embed_dim, video_base_size)
+            image_encoder.pos_embed = PosEmbed(image_encoder.embed_dim, image_base_size)
+        image_pos_embed = image_pos_embed if rotary_pos_embed else None
         if video_mixer_rank:
             video_encoder.mixer = AdaLayerNorm(video_encoder.embed_dim, video_mixer_rank, eps=None)
         super(NOVATransformer3DModel, self).__init__(
@@ -85,6 +92,7 @@ class NOVATransformer3DModel(Transformer3DModel, ModelMixin, ConfigMixin):
             image_decoder=image_decoder,
             mask_embed=MaskEmbed(image_encoder.embed_dim),
             text_embed=TextEmbed(text_token_dim, image_encoder.embed_dim, text_token_len),
-            video_pos_embed=VideoPosEmbed(video_encoder.embed_dim, video_base_size),
+            video_pos_embed=video_pos_embed,
+            image_pos_embed=image_pos_embed,
             motion_embed=MotionEmbed(video_encoder.embed_dim) if video_base_size[0] > 1 else None,
         )

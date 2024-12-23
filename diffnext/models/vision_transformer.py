@@ -15,10 +15,12 @@
 # ------------------------------------------------------------------------
 """Vision Transformer."""
 
+from typing import Tuple
+
 import torch
 from torch import nn
 
-from diffnext.models.embeddings import PatchEmbed
+from diffnext.models.embeddings import PatchEmbed, RotaryEmbed3D
 
 
 class MLP(nn.Module):
@@ -42,11 +44,12 @@ class Attention(nn.Module):
         self.num_heads, self.head_dim = num_heads, dim // num_heads
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.proj = nn.Linear(dim, dim)
-        self.attn_mask, self.cache_kv = None, None
+        self.attn_mask, self.cache_kv, self.pe_func = None, None, None
 
     def forward(self, x) -> torch.Tensor:
         qkv_shape = [-1, x.size(1), 3, self.num_heads, self.head_dim]
         q, k, v = self.qkv(x).view(qkv_shape).permute(2, 0, 3, 1, 4).unbind(dim=0)
+        q, k = (self.pe_func(q), self.pe_func(k)) if self.pe_func else (q, k)
         if self.cache_kv is not None:
             if isinstance(self.cache_kv, list):
                 k = self.cache_kv[0] = torch.cat([self.cache_kv[0], k], dim=2)
@@ -67,7 +70,8 @@ class Block(nn.Module):
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = MLP(dim, mlp_ratio=mlp_ratio)
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x, pe_func: callable = None) -> torch.Tensor:
+        self.attn.pe_func = pe_func
         x = self.norm1(self.attn(x)).add_(x)
         return self.norm2(self.mlp(x)).add_(x)
 
@@ -89,26 +93,33 @@ class VisionTransformer(nn.Module):
         super(VisionTransformer, self).__init__()
         self.embed_dim, self.image_size, self.image_dim = embed_dim, image_size, image_dim
         self.patch_embed = PatchEmbed(image_dim, embed_dim, patch_size)
-        self.pos_embed = nn.Identity()
+        self.pos_embed, self.rope = nn.Identity(), RotaryEmbed3D(embed_dim // num_heads)
         self.blocks = nn.ModuleList(Block(embed_dim, num_heads, mlp_ratio) for _ in range(depth))
         self.norm, self.mixer = nn.LayerNorm(embed_dim), nn.Identity()
         self.encoder_depth = len(self.blocks) // 2 if encoder_depth is None else encoder_depth
 
-    def forward(self, x, c=None, prev_ids=None) -> torch.Tensor:
+    def prepare_pe(self, c=None, ids=None, pos=None) -> Tuple[callable, callable]:
+        pad = 0 if c is None else c.size(1)
+        pe1 = pe2 = self.rope.get_func(pos, pad)
+        pe1 = self.rope.get_func(pos, pad, ids.expand(-1, -1, 3)) if ids is not None else pe1
+        return pe1, pe2
+
+    def forward(self, x, c=None, prev_ids=None, pos=None) -> torch.Tensor:
         x, prev_ids = x if isinstance(x, (tuple, list)) else (x, prev_ids)
         prev_ids = prev_ids if self.encoder_depth else None
         x = x_masked = self.pos_embed(self.patch_embed(x))
+        pe1, pe2 = self.prepare_pe(c, prev_ids, pos) if pos is not None else [None] * 2
         if prev_ids is not None:  # Split mask from x.
             prev_ids = prev_ids.expand(-1, -1, x.size(-1))
             x = x.gather(1, prev_ids)
         x = x if c is None else torch.cat([c, x], dim=1)
         for blk in self.blocks[: self.encoder_depth]:
-            x = blk(x)
+            x = blk(x, pe1)
         if prev_ids is not None and c is not None:  # Split c from x.
             c, x = x.split((c.size(1), x.size(1) - c.size(1)), dim=1)
         if prev_ids is not None:  # Merge mask with x.
             x = x_masked.scatter(1, prev_ids, x)
             x = x if c is None else torch.cat([c, x], dim=1)
         for blk in self.blocks[self.encoder_depth :]:
-            x = blk(x)
+            x = blk(x, pe2)
         return self.norm(x if c is None else x[:, c.size(1) :])

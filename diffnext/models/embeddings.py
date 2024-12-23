@@ -21,6 +21,45 @@ import torch
 from torch import nn
 
 
+class RotaryEmbed3D(nn.Identity):
+    """3D rotary position embedding layer."""
+
+    class ApplyFunc(object):
+        """Apply RoPE weight to Q/K tensor."""
+
+        def __init__(self, weight: torch.Tensor):
+            self.weight = weight
+
+        def __call__(self, x: torch.Tensor) -> torch.Tensor:
+            x = x.view(*x.shape[:-1], -1, 1, 2)
+            w = self.weight = self.weight.to(dtype=x.dtype)
+            return w[..., 0].mul(x[..., 0]).add_(w[..., 1] * x[..., 1]).flatten(3)
+
+    def __init__(self, dim=64, base_size=(16, 16), theta=10000.0):
+        super(RotaryEmbed3D, self).__init__()
+        self.dim, self.base_size, self.theta = dim, base_size, theta
+        for i, rotary_dim in enumerate(([dim // 8] + [(dim - dim // 8) // 2] * 2)):
+            scale = torch.arange(0, rotary_dim, 2).float().div_(rotary_dim)
+            self.register_buffer("scale%d" % i, scale, persistent=False)
+
+    def get_pos(self, t=1, bs=1, hw=None) -> torch.Tensor:
+        thw = [t] + list(hw or self.base_size)
+        pos = torch.zeros(thw + [3], device=self.scale1.device)
+        grid = [torch.arange(_, device=self.scale1.device) for _ in thw]
+        [pos[..., i].add_(grid[i].view([-1 if i == j else 1 for j in range(3)])) for i in range(3)]
+        return pos.view(1, -1, 3).expand(bs, -1, -1)
+
+    def get_func(self, pos: torch.Tensor, pad=0, ids: torch.Tensor = None) -> ApplyFunc:
+        pos, weight = pos.gather(1, ids) if ids is not None else pos, []
+        pos = nn.functional.pad(pos, (0, 0, pad, 0), value=0) if pad else pos
+        for i, grid in enumerate(pos.split(1, dim=-1)):
+            freq = torch.pow(self.theta, getattr(self, "scale%d" % i).float())
+            freq = grid * freq.reciprocal().unsqueeze(0)
+            freq = torch.stack([freq.cos(), -freq.sin(), freq.sin(), freq.cos()], dim=-1)
+            weight += [freq.view(freq.shape[:-1] + (2, 2))]
+        return self.ApplyFunc(torch.cat(weight, dim=-3).unsqueeze(1))
+
+
 class PosEmbed(nn.Module):
     """Position embedding layer."""
 

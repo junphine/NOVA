@@ -33,6 +33,7 @@ class Transformer3DModel(nn.Module):
         mask_embed=None,
         text_embed=None,
         video_pos_embed=None,
+        image_pos_embed=None,
         motion_embed=None,
         sample_scheduler=None,
     ):
@@ -43,6 +44,7 @@ class Transformer3DModel(nn.Module):
         self.mask_embed = mask_embed
         self.text_embed = text_embed
         self.video_pos_embed = video_pos_embed
+        self.image_pos_embed = image_pos_embed
         self.motion_embed = motion_embed
         self.sample_scheduler = sample_scheduler
 
@@ -107,6 +109,7 @@ class Transformer3DModel(nn.Module):
         guidance_end = max_guidance_scale if states["t"] else guidance_scale
         guidance_start = max_guidance_scale if states["t"] else min_guidance_scale
         c, x, self.mask_embed.mask = states["c"], states["x"].zero_(), None
+        pos = self.image_pos_embed.get_pos(1, c.size(0)) if self.image_pos_embed else None
         for i, num_preds in enumerate(self.progress_bar(all_num_preds, inputs.get("tqdm2", False))):
             guidance_level = (i + 1) / len(all_num_preds)
             guidance_scale = (guidance_end - guidance_start) * guidance_level + guidance_start
@@ -115,7 +118,7 @@ class Transformer3DModel(nn.Module):
             pred_ids = torch.cat([pred_ids] * 2) if guidance_scale > 1 else pred_ids
             prev_ids = prev_ids if i else pred_ids.new_empty((pred_ids.size(0), 0, 1))
             z = torch.cat([z] * 2) if guidance_scale > 1 else z
-            z = self.image_encoder(z, c, prev_ids)
+            z = self.image_encoder(z, c, prev_ids, pos=pos)
             prev_ids = torch.cat([prev_ids, pred_ids], dim=1)
             states["noise"].normal_(generator=generator)
             sample = self.denoise(z, states["noise"], guidance_scale, generator, pred_ids)
@@ -128,15 +131,19 @@ class Transformer3DModel(nn.Module):
         max_latent_length = inputs.get("max_latent_length", 1)
         self.sample_scheduler.set_timesteps(inputs.get("num_diffusion_steps", 25))
         states = {"x": inputs["x"], "noise": inputs["x"].clone()}
-        latents, self.mask_embed.pred_ids = inputs.get("latents", []), None
-        [setattr(blk.attn, "cache_kv", max_latent_length > 1) for blk in self.video_encoder.blocks]
-        time_embed = self.video_pos_embed.get_time_embed(max_latent_length)
+        latents, self.mask_embed.pred_ids, time_pos = inputs.get("latents", []), None, []
+        if self.image_pos_embed:
+            time_pos = self.video_pos_embed.get_pos(max_latent_length).chunk(max_latent_length, 1)
+        else:
+            time_embed = self.video_pos_embed.get_time_embed(max_latent_length)
+        [setattr(blk.attn, "cache_kv", True) for blk in self.video_encoder.blocks]
         for states["t"] in self.progress_bar(range(max_latent_length), inputs.get("tqdm1", True)):
+            pos = time_pos[states["t"]] if time_pos else None
             c = self.video_encoder.patch_embed(states["x"])
             c.__setitem__(slice(None), self.mask_embed.bos_token) if states["t"] == 0 else c
-            c = self.video_pos_embed(c.add_(time_embed[states["t"]]))
+            c = self.video_pos_embed(c.add_(time_embed[states["t"]])) if not time_pos else c
             c = torch.cat([c] * 2) if guidance_scale > 1 else c
-            c = self.video_encoder(c, None if states["t"] else inputs["c"])
+            c = self.video_encoder(c, None if states["t"] else inputs["c"], pos=pos)
             states["c"] = self.video_encoder.mixer(states["*"], c) if states["t"] else c
             states["*"] = states["*"] if states["t"] else states["c"]
             if states["t"] == 0 and latents:
