@@ -126,10 +126,6 @@ class TextEmbed(nn.Module):
         self.register_buffer("weight", torch.zeros(512, token_dim))  # Maximum positions.
         nn.init.normal_(self.weight, std=0.02)
 
-    def add_guidance(self, c) -> torch.Tensor:
-        token = self.weight[: self.num_tokens].expand(c.size(0), -1, -1)
-        return torch.cat([c, self.forward(token)])
-
     @torch.no_grad()
     def encode_prompts(self, prompts) -> torch.Tensor:
         device, dtype = self.weight.device, self.weight.dtype

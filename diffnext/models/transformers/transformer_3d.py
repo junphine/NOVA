@@ -46,11 +46,15 @@ class Transformer3DModel(nn.Module):
         self.motion_embed = motion_embed
         self.sample_scheduler = sample_scheduler
 
+    def progress_bar(self, iterable, enable=True):
+        """Return a tqdm progress bar."""
+        return tqdm(iterable) if enable else iterable
+
     def preprocess(self, inputs: Dict):
         """Preprocess model inputs."""
         dtype, device = self.dtype, self.device
         inputs["c"], add_guidance = inputs.get("c", []), inputs.get("guidance_scale", 1) != 1
-        if "x" not in inputs:
+        if inputs.get("x", None) is None:
             batch_size = inputs.get("batch_size", 1)
             image_size = (self.image_encoder.image_dim,) + self.image_encoder.image_size
             inputs["x"] = torch.empty(batch_size, *image_size, device=device, dtype=dtype)
@@ -76,10 +80,6 @@ class Transformer3DModel(nn.Module):
         x = torch.cat(splits) if len(splits) > 1 else splits[0]
         x = x.permute(0, 2, 3, 4, 1) if x.dim() == 5 else x.permute(0, 2, 3, 1)
         outputs["x"] = x.mul_(127.5).add_(127.5).clamp(0, 255).byte()
-
-    def progress_bar(self, iterable, enable=True):
-        """Return a tqdm progress bar."""
-        return tqdm(iterable) if enable else iterable
 
     @torch.no_grad()
     def denoise(self, z, x, guidance_scale=1, generator=None, pred_ids=None) -> torch.Tensor:
