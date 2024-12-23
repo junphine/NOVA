@@ -35,7 +35,8 @@ class Transformer3DModel(nn.Module):
         video_pos_embed=None,
         image_pos_embed=None,
         motion_embed=None,
-        sample_scheduler=None,
+        noise_scheduler=None,
+        sample_schduler=None,
     ):
         super(Transformer3DModel, self).__init__()
         self.video_encoder = video_encoder
@@ -46,11 +47,18 @@ class Transformer3DModel(nn.Module):
         self.video_pos_embed = video_pos_embed
         self.image_pos_embed = image_pos_embed
         self.motion_embed = motion_embed
-        self.sample_scheduler = sample_scheduler
+        self.noise_scheduler = noise_scheduler
+        self.sample_scheduler = sample_schduler
+        self.pipeline_preprocess = lambda inputs: inputs
+        self.loss_repeat = 4
 
     def progress_bar(self, iterable, enable=True):
         """Return a tqdm progress bar."""
         return tqdm(iterable) if enable else iterable
+
+    def init_weights(self):
+        """Initialze model weights."""
+        [m.init_weights() if hasattr(m, "init_weights") else None for m in self.children()]
 
     def preprocess(self, inputs: Dict):
         """Preprocess model inputs."""
@@ -82,6 +90,29 @@ class Transformer3DModel(nn.Module):
         x = torch.cat(splits) if len(splits) > 1 else splits[0]
         x = x.permute(0, 2, 3, 4, 1) if x.dim() == 5 else x.permute(0, 2, 3, 1)
         outputs["x"] = x.mul_(127.5).add_(127.5).clamp(0, 255).byte()
+
+    def get_losses(self, z: torch.Tensor, x: torch.Tensor, video_shape=None) -> Dict:
+        """Return the training losses."""
+        z = z.repeat(self.loss_repeat, *((1,) * (z.dim() - 1)))
+        x = x.repeat(self.loss_repeat, *((1,) * (x.dim() - 1)))
+        x = self.image_encoder.patch_embed.patchify(x)
+        noise = torch.randn(x.shape, dtype=x.dtype, device=x.device)
+        timestep = self.noise_scheduler.sample_timesteps(z.shape[:2], device=z.device)
+        x_t = self.noise_scheduler.add_noise(x, noise, timestep)
+        x_t = self.image_encoder.patch_embed.unpatchify(x_t)
+        timestep = getattr(self.noise_scheduler, "timestep", timestep)
+        pred_type = getattr(self.noise_scheduler.config, "prediction_type", "flow")
+        model_pred = self.image_decoder(x_t, timestep, z)
+        model_target = noise.float() if pred_type == "epsilon" else noise.sub(x).float()
+        loss = nn.functional.mse_loss(model_pred.float(), model_target, reduction="none")
+        loss, weight = loss.mean(-1, True), self.mask_embed.mask.to(loss.dtype)
+        weight = weight.repeat(self.loss_repeat, *((1,) * (z.dim() - 1)))
+        loss = loss.mul_(weight).div_(weight.sum().add_(1e-5))
+        if video_shape is not None:
+            loss = loss.view((-1,) + video_shape).transpose(0, 1).sum((1, 2))
+            i2i = loss[1:].sum().mul_(video_shape[0] / (video_shape[0] - 1))
+            return {"loss_t2i": loss[0].mul(video_shape[0]), "loss_i2i": i2i}
+        return {"loss": loss.sum()}
 
     @torch.no_grad()
     def denoise(self, z, x, guidance_scale=1, generator=None, pred_ids=None) -> torch.Tensor:
@@ -153,9 +184,36 @@ class Transformer3DModel(nn.Module):
                 latents.append(states["x"].clone())
         [setattr(blk.attn, "cache_kv", False) for blk in self.video_encoder.blocks]
 
-    def forward(self, inputs: Dict) -> Dict:
+    def forward_train(self, inputs):
+        """Forward pipeline for training."""
+        # 3D temporal autoregressive modeling (TAM).
+        inputs["x"].unsqueeze_(2) if inputs["x"].dim() == 4 else None
+        bs, latent_length = inputs["x"].size(0), inputs["x"].size(2)
+        c = self.video_encoder.patch_embed(inputs["x"][:, :, : latent_length - 1])
+        bov = self.mask_embed.bos_token.expand(bs, 1, c.size(-2), -1)
+        c = self.video_pos_embed(torch.cat([bov, c], dim=1))
+        attn_mask, pos = self.mask_embed.get_attn_mask(c, inputs["c"]), None
+        [setattr(blk.attn, "attn_mask", attn_mask) for blk in self.video_encoder.blocks]
+        pos = self.video_pos_embed.get_pos(latent_length, bs) if self.image_pos_embed else pos
+        c = self.video_encoder(c.flatten(1, 2), inputs["c"], pos=pos)
+        if hasattr(self.video_encoder, "mixer") and latent_length > 1:
+            c = c.view(bs, latent_length, -1, c.size(-1)).split([1, latent_length - 1], 1)
+            c = torch.cat([c[0], self.video_encoder.mixer(*c)], 1)
+        # 2D masked autoregressive modeling (MAM).
+        x = inputs["x"][:, :, :latent_length].transpose(1, 2).flatten(0, 1)
+        z = self.image_encoder.patch_embed(x)
+        pos = self.image_pos_embed.get_pos(1, bs) if self.image_pos_embed else pos
+        z = self.image_encoder(self.mask_embed(z), c.reshape(bs, -1, c.size(-1)), pos=pos)
+        # 1D token-wise diffusion modeling (MLP).
+        video_shape = (latent_length, z.size(1)) if latent_length > 1 else None
+        return self.get_losses(z, x, video_shape=video_shape)
+
+    def forward(self, inputs):
         """Define the computation performed at every call."""
+        self.pipeline_preprocess(inputs)
         self.preprocess(inputs)
+        if self.training:
+            return self.forward_train(inputs)
         inputs["latents"] = inputs.pop("latents", [])
         self.generate_video(inputs)
         return {"x": torch.stack(inputs["latents"], dim=2)}
