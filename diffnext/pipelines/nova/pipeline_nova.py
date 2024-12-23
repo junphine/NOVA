@@ -21,7 +21,7 @@ import PIL.Image
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
-from diffnext.pipelines.pipeline_utils import NOVAPipelineOutput, PipelineMixin
+from diffnext.pipelines.nova.pipeline_utils import NOVAPipelineOutput, PipelineMixin
 
 
 class NOVAPipeline(DiffusionPipeline, PipelineMixin):
@@ -91,11 +91,11 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
                 The number of images that should be generated per prompt.
             generator (torch.Generator, *optional*):
                 The random generator.
-            latents (List[torch.Tensor], **optional**)
+            latents (List[torch.Tensor], *optional*)
                 A list of prefilled VAE latents.
-            prompt_embeds (List[torch.Tensor], **optional**)
+            prompt_embeds (List[torch.Tensor], *optional*)
                 A list of precomputed prompt embeddings.
-            negative_prompt_embeds (List[torch.Tensor], **optional**)
+            negative_prompt_embeds (List[torch.Tensor], *optional*)
                 A list of precomputed negative prompt embeddings.
             output_type (str, *optional*, defaults to `"pil"`):
                 The output format of the generated image. Choose between `PIL.Image` or `np.array`.
@@ -140,7 +140,7 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
                 The number of images that should be generated per prompt.
             generator (torch.Generator, *optional*):
                 The random generator.
-            latents (List[torch.Tensor], **optional**)
+            latents (List[torch.Tensor], *optional*)
                 A list of prefilled VAE latents.
 
         Returns:
@@ -170,9 +170,9 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
                 The number of images that should be generated per prompt.
             negative_prompt (str or List[str], *optional*):
                 The prompt or prompts not to guide the image generation.
-            prompt_embeds (List[torch.Tensor], **optional**)
+            prompt_embeds (List[torch.Tensor], *optional*)
                 A list of precomputed prompt embeddings.
-            negative_prompt_embeds (List[torch.Tensor], **optional**)
+            negative_prompt_embeds (List[torch.Tensor], *optional*)
                 A list of precomputed negative prompt embeddings.
 
         Returns:

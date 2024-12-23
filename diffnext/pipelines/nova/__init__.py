@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------
-"""DiffNext pipelines."""
+"""NOVA pipelines."""
 
-from diffnext.pipelines.builder import build_pipeline
-from diffnext.pipelines.builder import build_diffusion_scheduler
-from diffnext.pipelines.nova import NOVAPipeline
-from diffnext.pipelines.nova import NOVATrainT2IPipeline
+from diffnext.pipelines.nova.pipeline_nova import NOVAPipeline
+from diffnext.pipelines.nova.pipeline_train_t2i import NOVATrainT2IPipeline

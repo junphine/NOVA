@@ -17,6 +17,7 @@
 
 import torch
 from torch import nn
+from torch.utils.checkpoint import checkpoint as apply_ckpt
 
 from diffnext.models.embeddings import PatchEmbed
 from diffnext.models.normalization import AdaLayerNormZero
@@ -40,10 +41,14 @@ class DiffusionBlock(nn.Module):
 
     def __init__(self, dim):
         super(DiffusionBlock, self).__init__()
+        self.dim, self.mlp_checkpointing = dim, False
         self.norm1 = AdaLayerNormZero(dim, num_stats=3, eps=1e-6)
         self.proj, self.norm2 = Projector(dim, dim, dim), nn.LayerNorm(dim)
 
     def forward(self, x, z) -> torch.Tensor:
+        if self.mlp_checkpointing and x.requires_grad:
+            h, (gate,) = apply_ckpt(self.norm1, x, z, use_reentrant=False)
+            return self.norm2(apply_ckpt(self.proj, h, use_reentrant=False)).mul(gate).add_(x)
         h, (gate,) = self.norm1(x, z)
         return self.norm2(self.proj(h)).mul(gate).add_(x)
 

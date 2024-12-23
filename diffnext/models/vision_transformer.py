@@ -19,6 +19,7 @@ from typing import Tuple
 
 import torch
 from torch import nn
+from torch.utils.checkpoint import checkpoint as apply_ckpt
 
 from diffnext.models.embeddings import PatchEmbed, RotaryEmbed3D
 
@@ -69,11 +70,23 @@ class Block(nn.Module):
         self.attn = Attention(dim, num_heads, qkv_bias=qkv_bias)
         self.norm2 = nn.LayerNorm(dim)
         self.mlp = MLP(dim, mlp_ratio=mlp_ratio)
+        self.attn_checkpointing, self.mlp_checkpointing = False, False
+
+    def forward_attn(self, x) -> torch.Tensor:
+        return self.norm1(self.attn(x))
+
+    def forward_mlp(self, x) -> torch.Tensor:
+        return self.norm2(self.mlp(x))
+
+    def forward_ckpt(self, x, name) -> torch.Tensor:
+        if getattr(self, f"{name}_checkpointing", False) and x.requires_grad:
+            return apply_ckpt(getattr(self, f"forward_{name}"), x, use_reentrant=False)
+        return getattr(self, f"forward_{name}")(x)
 
     def forward(self, x, pe_func: callable = None) -> torch.Tensor:
         self.attn.pe_func = pe_func
-        x = self.norm1(self.attn(x)).add_(x)
-        return self.norm2(self.mlp(x)).add_(x)
+        x = self.forward_ckpt(x, "attn").add_(x)
+        return self.forward_ckpt(x, "mlp").add_(x)
 
 
 class VisionTransformer(nn.Module):

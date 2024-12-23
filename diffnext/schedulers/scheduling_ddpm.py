@@ -38,9 +38,9 @@ class DDPMSchedulerOutput(BaseOutput):
 def betas_for_alpha_bar(num_diffusion_timesteps, max_beta=0.999, alpha_transform_type="cosine"):
     """Create a beta schedule that discretizes the given alpha_t_bar function."""
     if alpha_transform_type == "cosine":
-        alpha_bar_fn = lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2
+        alpha_bar_fn = lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2  # noqa
     elif alpha_transform_type == "exp":
-        alpha_bar_fn = lambda t: math.exp(t * -12.0)
+        alpha_bar_fn = lambda t: math.exp(t * -12.0)  # noqa
     else:
         raise ValueError(f"Unsupported alpha_transform_type: {alpha_transform_type}")
     betas = []
@@ -118,7 +118,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
             Whether to rescale the betas to have zero terminal SNR. This enables the model to generate very bright and
             dark samples instead of limiting it to samples with medium brightness. Loosely related to
             [`--offset_noise`](https://github.com/huggingface/diffusers/blob/74fd735eb073eb1d774b1ab4154a0876eb82f055/examples/dreambooth/train_dreambooth.py#L506).
-    """
+    """  # noqa
 
     _compatibles = [e.name for e in KarrasDiffusionSchedulers]
     order = 1
@@ -213,7 +213,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
         alpha_prod_t = self.alphas_cumprod[t]
         alpha_prod_t_prev = self.alphas_cumprod[prev_t] if prev_t >= 0 else self.one
         current_beta_t = 1 - alpha_prod_t / alpha_prod_t_prev
-        # For t > 0, compute predicted variance βt (see formula (6) and (7) from https://arxiv.org/pdf/2006.11239.pdf)
+        # For t > 0, compute predicted variance βt (see formula (6) and (7) from https://arxiv.org/pdf/2006.11239.pdf)  # noqa
         # and sample from it to get previous sample
         # x_{t-1} ~ N(pred_prev_sample, variance) == add variance to pred_sample
         variance = (1 - alpha_prod_t_prev) / (1 - alpha_prod_t) * current_beta_t
@@ -262,7 +262,7 @@ class DDPMScheduler(SchedulerMixin, ConfigMixin):
                 If return_dict is `True`, [`~schedulers.scheduling_ddpm.DDPMSchedulerOutput`] is returned, otherwise a
                 tuple is returned where the first element is the sample tensor.
 
-        """
+        """  # noqa
         t = timestep
         prev_t = self.previous_timestep(t)
 
