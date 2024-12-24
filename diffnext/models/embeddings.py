@@ -15,6 +15,7 @@
 # ------------------------------------------------------------------------
 """Embedding layers."""
 
+import sys
 from typing import Tuple
 
 import numpy as np
@@ -32,6 +33,7 @@ class RotaryEmbed3D(nn.Identity):
         def __init__(self, weight: torch.Tensor):
             self.weight = weight
 
+        @torch.compile(fullgraph=True, disable=sys.platform != "linux")
         def __call__(self, x: torch.Tensor) -> torch.Tensor:
             x = x.view(*x.shape[:-1], -1, 1, 2)
             w = self.weight = self.weight.to(dtype=x.dtype)
