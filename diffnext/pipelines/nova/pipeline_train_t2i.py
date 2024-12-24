@@ -25,7 +25,7 @@ from diffnext.pipelines.nova.pipeline_utils import PipelineMixin, freeze_module
 
 @PIPELINES.register("nova_train_t2i")
 class NOVATrainT2IPipeline(DiffusionPipeline, PipelineMixin):
-    """Pipeline for training NOVA models."""
+    """Pipeline for training NOVA T2I models."""
 
     _optional_components = ["transformer", "scheduler", "vae", "text_encoder", "tokenizer"]
 
@@ -52,10 +52,10 @@ class NOVATrainT2IPipeline(DiffusionPipeline, PipelineMixin):
         """Return the trainable model."""
         return self.transformer
 
-    def configure_model(self, loss_repeat=4, checkpointing_level=0, config=None) -> torch.nn.Module:
+    def configure_model(self, loss_repeat=4, checkpointing=0, config=None) -> torch.nn.Module:
         """Configure the trainable model."""
         self.model.loss_repeat = config.TRAIN.LOSS_REPEAT if config else loss_repeat
-        ckpt_lvl = config.TRAIN.CHECKPOINTING_LEVEL if config else checkpointing_level
+        ckpt_lvl = config.TRAIN.CHECKPOINTING if config else checkpointing
         [setattr(blk, "mlp_checkpointing", ckpt_lvl) for blk in self.model.video_encoder.blocks]
         [setattr(blk, "mlp_checkpointing", ckpt_lvl > 1) for blk in self.model.image_encoder.blocks]
         [setattr(blk, "mlp_checkpointing", ckpt_lvl > 2) for blk in self.model.image_decoder.blocks]

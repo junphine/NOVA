@@ -15,6 +15,12 @@
 # ------------------------------------------------------------------------
 """Pipeline builders."""
 
+from typing import Dict
+
+import json
+import os
+import tempfile
+
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
@@ -22,6 +28,49 @@ from diffusers.schedulers.scheduling_utils import SchedulerMixin
 from diffnext.utils.registry import Registry
 
 PIPELINES = Registry("pipelines")
+
+
+def get_pipeline_path(
+    pretrained_path,
+    module_dict: dict = None,
+    module_config: Dict[str, dict] = None,
+    target_path: str = None,
+) -> str:
+    """Return the pipeling loading path.
+
+    Args:
+        pretrained_path (str)
+            The pretrained path to load pipeline.
+        module_dict (dict, *optional*)
+            The path dict to load custom modules.
+        module_config (Dict[str, dict], *optional*)
+            The custom configurations to dump into ``config.json``.
+        target_path (str, *optional*)
+            The path to store custom modules and configs.
+
+    Returns:
+       str: The pipeline loading path.
+
+    """
+    if module_dict is None and module_config is None:
+        return pretrained_path
+    target_path = target_path or tempfile.mkdtemp()
+    if module_dict is not None:
+        module_dict = module_dict.copy()
+        model_index = json.load(open(module_dict.pop("model_index")))
+        for k in os.listdir(pretrained_path):
+            os.makedirs(os.path.join(target_path, k), exist_ok=True)
+            for _ in os.listdir(os.path.join(pretrained_path, k)):
+                os.symlink(os.path.join(pretrained_path, k, _), os.path.join(target_path, k, _))
+        for k, v in module_dict.items():
+            model_index.pop(k) if not v else None
+            os.symlink(v, os.path.join(target_path, k)) if v else None
+        for k, v in (module_config or {}).items():
+            config_file = os.path.join(target_path, k, "config.json")
+            os.remove(config_file) if os.path.exists(config_file) else None
+            json.dump(v, open(config_file, "w"))
+        json.dump(model_index, open(os.path.join(target_path, "model_index.json"), "w"))
+    return target_path
 
 
 def build_diffusion_scheduler(scheduler_path, sample=False, **kwargs) -> SchedulerMixin:
@@ -32,6 +81,9 @@ def build_diffusion_scheduler(scheduler_path, sample=False, **kwargs) -> Schedul
             The path to load a diffusion scheduler.
         sample (bool, *optional*, default to False)
             Whether to create the sampling-specific scheduler.
+
+    Returns:
+        SchedulerMixin: The diffusion scheduler.
 
     """
     from diffnext.schedulers.scheduling_ddpm import DDPMScheduler
@@ -48,7 +100,7 @@ def build_diffusion_scheduler(scheduler_path, sample=False, **kwargs) -> Schedul
 
 
 def build_pipeline(
-    path=None,
+    pretrained_path,
     pipe_type=None,
     precison="bfloat16",
     config=None,
@@ -63,7 +115,7 @@ def build_pipeline(
         ```
 
     Args:
-        path (str, *optional*):
+        pretrained_path (str):
             The model path that includes ``model_index.json`` to create pipeline.
         pipe_type (str, *optional*)
             The registered pipeline class.
@@ -72,10 +124,12 @@ def build_pipeline(
         cfg (object, *optional*)
             The config object.
 
+    Returns:
+        DiffusionPipeline: The diffusion pipeline.
+
     """
-    path = config.MODEL.PIPELINE_PATH if config else path
-    pipe_type = config.MODEL.PIPELINE_TYPE if config else pipe_type
+    pipe_type = config.PIPELINE.TYPE if config else pipe_type
     precison = config.MODEL.PRECISION if config else precison
     kwargs.setdefault("trust_remote_code", True)
     kwargs.setdefault("torch_dtype", getattr(torch, precison.lower()))
-    return PIPELINES.get(pipe_type).func.from_pretrained(path, **kwargs)
+    return PIPELINES.get(pipe_type).func.from_pretrained(pretrained_path, **kwargs)

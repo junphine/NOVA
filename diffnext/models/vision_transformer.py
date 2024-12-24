@@ -131,7 +131,7 @@ class VisionTransformer(nn.Module):
         if prev_ids is not None and c is not None:  # Split c from x.
             c, x = x.split((c.size(1), x.size(1) - c.size(1)), dim=1)
         if prev_ids is not None:  # Merge mask with x.
-            x = x_masked.scatter(1, prev_ids, x)
+            x = x_masked.to(dtype=x.dtype).scatter(1, prev_ids, x)
             x = x if c is None else torch.cat([c, x], dim=1)
         for blk in self.blocks[self.encoder_depth :]:
             x = blk(x, pe2)
