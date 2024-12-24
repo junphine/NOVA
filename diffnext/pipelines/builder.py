@@ -55,21 +55,23 @@ def get_pipeline_path(
     if module_dict is None and module_config is None:
         return pretrained_path
     target_path = target_path or tempfile.mkdtemp()
-    if module_dict is not None:
-        module_dict = module_dict.copy()
-        model_index = json.load(open(module_dict.pop("model_index")))
-        for k in os.listdir(pretrained_path):
-            os.makedirs(os.path.join(target_path, k), exist_ok=True)
-            for _ in os.listdir(os.path.join(pretrained_path, k)):
-                os.symlink(os.path.join(pretrained_path, k, _), os.path.join(target_path, k, _))
-        for k, v in module_dict.items():
-            model_index.pop(k) if not v else None
-            os.symlink(v, os.path.join(target_path, k)) if v else None
-        for k, v in (module_config or {}).items():
-            config_file = os.path.join(target_path, k, "config.json")
-            os.remove(config_file) if os.path.exists(config_file) else None
-            json.dump(v, open(config_file, "w"))
-        json.dump(model_index, open(os.path.join(target_path, "model_index.json"), "w"))
+    for k in os.listdir(pretrained_path):
+        if not os.path.isdir(os.path.join(pretrained_path, k)):
+            continue
+        os.makedirs(os.path.join(target_path, k), exist_ok=True)
+        for _ in os.listdir(os.path.join(pretrained_path, k)):
+            os.symlink(os.path.join(pretrained_path, k, _), os.path.join(target_path, k, _))
+    module_dict = module_dict.copy() if module_dict is not None else {}
+    model_index = module_dict.pop("model_index", os.path.join(pretrained_path, "model_index.json"))
+    model_index = json.load(open(model_index))
+    for k, v in module_dict.items():
+        model_index.pop(k) if not v else None
+        os.symlink(v, os.path.join(target_path, k)) if v else None
+    for k, v in (module_config or {}).items():
+        config_file = os.path.join(target_path, k, "config.json")
+        os.remove(config_file) if os.path.exists(config_file) else None
+        json.dump(v, open(config_file, "w"))
+    json.dump(model_index, open(os.path.join(target_path, "model_index.json"), "w"))
     return target_path
 
 
