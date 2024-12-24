@@ -117,8 +117,8 @@ def build_pipeline(
     Args:
         pretrained_path (str):
             The model path that includes ``model_index.json`` to create pipeline.
-        pipe_type (str, *optional*)
-            The registered pipeline class.
+        pipe_type (str or `type(XXXPipeline)`, *optional*)
+            The registered pipeline class or specific pipeline type.
         precision (str, *optional*, default to ``bfloat16``)
             The compute precision used for all pipeline components.
         cfg (object, *optional*)
@@ -129,7 +129,8 @@ def build_pipeline(
 
     """
     pipe_type = config.PIPELINE.TYPE if config else pipe_type
+    pipe_type = PIPELINES.get(pipe_type).func if isinstance(pipe_type, str) else pipe_type
     precison = config.MODEL.PRECISION if config else precison
     kwargs.setdefault("trust_remote_code", True)
     kwargs.setdefault("torch_dtype", getattr(torch, precison.lower()))
-    return PIPELINES.get(pipe_type).func.from_pretrained(pretrained_path, **kwargs)
+    return pipe_type.from_pretrained(pretrained_path, **kwargs)

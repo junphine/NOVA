@@ -21,9 +21,11 @@ import PIL.Image
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
+from diffnext.pipelines.builder import PIPELINES
 from diffnext.pipelines.nova.pipeline_utils import NOVAPipelineOutput, PipelineMixin
 
 
+@PIPELINES.register("nova")
 class NOVAPipeline(DiffusionPipeline, PipelineMixin):
     """NOVA autoregressive diffusion pipeline."""
 
