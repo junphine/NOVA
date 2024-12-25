@@ -34,10 +34,13 @@ class RotaryEmbed3D(nn.Identity):
             self.weight = weight
 
         @torch.compile(fullgraph=True, disable=sys.platform != "linux")
+        def call_impl(self, x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
+            return w[..., 0].mul(x[..., 0]).add_(w[..., 1] * x[..., 1]).flatten(3)
+
         def __call__(self, x: torch.Tensor) -> torch.Tensor:
             x = x.view(*x.shape[:-1], -1, 1, 2)
             w = self.weight = self.weight.to(dtype=x.dtype)
-            return w[..., 0].mul(x[..., 0]).add_(w[..., 1] * x[..., 1]).flatten(3)
+            return self.call_impl(x, w)
 
     def __init__(self, dim=64, base_size=(16, 16), theta=10000.0):
         super(RotaryEmbed3D, self).__init__()
