@@ -104,7 +104,7 @@ def build_diffusion_scheduler(scheduler_path, sample=False, **kwargs) -> Schedul
 def build_pipeline(
     pretrained_path,
     pipe_type=None,
-    precison="bfloat16",
+    precison="float16",
     config=None,
     **kwargs,
 ) -> DiffusionPipeline:
@@ -121,7 +121,7 @@ def build_pipeline(
             The model path that includes ``model_index.json`` to create pipeline.
         pipe_type (str or `type(XXXPipeline)`, *optional*)
             The registered pipeline class or specific pipeline type.
-        precision (str, *optional*, default to ``bfloat16``)
+        precision (str, *optional*, default to ``float16``)
             The compute precision used for all pipeline components.
         cfg (object, *optional*)
             The config object.

@@ -67,6 +67,7 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         latents=None,
         prompt_embeds=None,
         negative_prompt_embeds=None,
+        disable_progress_bar=False,
         output_type="pil",
         **kwargs,
     ) -> NOVAPipelineOutput:
@@ -99,6 +100,8 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
                 A list of precomputed prompt embeddings.
             negative_prompt_embeds (List[torch.Tensor], *optional*)
                 A list of precomputed negative prompt embeddings.
+            disable_progress_bar (bool, *optional*)
+                Whether to disable all progress bars.
             output_type (str, *optional*, defaults to `"pil"`):
                 The output format of the generated image. Choose between `PIL.Image` or `np.array`.
 
@@ -111,7 +114,8 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         mask_ratios = np.cos(0.5 * np.pi * np.arange(num_inference_steps + 1) / num_inference_steps)
         mask_length = np.round(mask_ratios * num_patches).astype("int64")
         inputs["num_preds"] = mask_length[:-1] - mask_length[1:]
-        inputs["tqdm1"], inputs["tqdm2"] = max_latent_length > 1, max_latent_length == 1
+        inputs["tqdm1"] = max_latent_length > 1 and not disable_progress_bar
+        inputs["tqdm2"] = max_latent_length == 1 and not disable_progress_bar
         inputs["prompt"] = self.encode_prompt(**dict(_ for _ in inputs.items() if "prompt" in _[0]))
         inputs["latents"] = self.prepare_latents(image, num_images_per_prompt, generator, latents)
         inputs["batch_size"] = len(inputs["prompt"]) // (2 if guidance_scale > 1 else 1)
