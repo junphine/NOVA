@@ -20,6 +20,7 @@ import os
 import gradio as gr
 import numpy as np
 import torch
+import PIL.Image
 
 from diffnext.pipelines import NOVAPipeline
 from diffnext.utils import export_to_image
@@ -36,10 +37,24 @@ def parse_args():
     parser.add_argument("--precision", default="float16", help="compute precision")
     return parser.parse_args()
 
+def crop_image(image, target_h, target_w):
+    """Center crop image to target size."""
+    h, w = image.height, image.width
+    aspect_ratio_target, aspect_ratio = target_w / target_h, w / h
+    if aspect_ratio > aspect_ratio_target:
+        new_w = int(h * aspect_ratio_target)
+        x_start = (w - new_w) // 2
+        image = image.crop((x_start, 0, x_start + new_w, h))
+    else:
+        new_h = int(w / aspect_ratio_target)
+        y_start = (h - new_h) // 2
+        image = image.crop((0, y_start, w, y_start + new_h))
+    return np.array(image.resize((target_w, target_h), PIL.Image.Resampling.BILINEAR))
 
 def generate_image4(
     prompt,
     negative_prompt,
+    image_prompt,
     seed,
     randomize_seed,
     guidance_scale,
@@ -48,8 +63,10 @@ def generate_image4(
     progress=gr.Progress(track_tqdm=True),
 ):
     """Generate 4 images."""
-    args = locals()
+    args = locals().copy()
     seed = np.random.randint(2147483647) if randomize_seed else seed
+    preset = {"w": 768, "h": 480}
+    args["image"] = crop_image(image_prompt, preset["h"], preset["w"]) if image_prompt else None
     device = getattr(pipe, "_offload_device", pipe.device)
     generator = torch.Generator(device=device).manual_seed(seed)
     images = pipe(generator=generator, num_images_per_prompt=4, **args).images
@@ -107,6 +124,7 @@ if __name__ == "__main__":
         value="low quality, deformed, distorted, disfigured, fused fingers, bad anatomy, weird hand",  # noqa
         lines=5,
     )
+    image_prompt = gr.Image(label="Image Prompt (Optional) ", type="pil")
     # fmt: off
     adv_opt = gr.Accordion("Advanced Options", open=True).__enter__()
     seed = gr.Slider(label="Seed", maximum=2147483647, step=1, value=0)
@@ -142,6 +160,7 @@ if __name__ == "__main__":
         inputs=[
             prompt,
             negative_prompt,
+            image_prompt,
             seed,
             randomize_seed,
             guidance_scale,
@@ -150,4 +169,4 @@ if __name__ == "__main__":
         ],
         outputs=[result1, result2, result3, result4, seed],
     )
-    app.__exit__(), app.launch(share=False)
+    app.__exit__(), app.launch(share=False,server_name='0.0.0.0')

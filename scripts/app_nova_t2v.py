@@ -69,14 +69,14 @@ def generate_video(
     progress=gr.Progress(track_tqdm=True),
 ):
     """Generate a video."""
-    args = locals()
+    args = locals().copy()
     preset = [p for p in video_presets if p["label"] == preset][0]
     args["max_latent_length"] = preset["#latents"]
     args["image"] = crop_image(image_prompt, preset["h"], preset["w"]) if image_prompt else None
     seed = np.random.randint(2147483647) if randomize_seed else seed
     device = getattr(pipe, "_offload_device", pipe.device)
     generator = torch.Generator(device=device).manual_seed(seed)
-    frames = pipe(generator=generator, **args).frames[0]
+    frames = pipe(generator=generator, **args, output_type='frames').frames[0]
     return export_to_video(frames, fps=12), seed
 
 
@@ -92,6 +92,9 @@ header = (
 header2 = f"<div align='center'><h3>🎞️ A {abbr} model for continuous visual generation</h3></div>"
 
 video_presets = [
+    {"label": "129x768x480", "w": 768, "h": 480, "#latents": 33},
+    {"label": "65x768x480", "w": 768, "h": 480, "#latents": 17},
+    {"label": "49x768x480", "w": 768, "h": 480, "#latents": 13},
     {"label": "33x768x480", "w": 768, "h": 480, "#latents": 9},
     {"label": "17x768x480", "w": 768, "h": 480, "#latents": 5},
     {"label": "1x768x480", "w": 768, "h": 480, "#latents": 1},
@@ -141,17 +144,17 @@ if __name__ == "__main__":
     adv_opt = gr.Accordion("Advanced Options", open=False).__enter__()
     seed = gr.Slider(label="Seed", maximum=2147483647, step=1, value=0)
     randomize_seed = gr.Checkbox(label="Randomize seed", value=True)
-    guidance_scale = gr.Slider(label="Guidance scale", minimum=1, maximum=10.0, step=0.1, value=7.0)
+    guidance_scale = gr.Slider(label="Guidance scale", minimum=1, maximum=10.0, step=0.2, value=7.0)
     with gr.Row():
-        num_inference_steps = gr.Slider(label="Inference steps", minimum=1, maximum=128, step=1, value=128)  # noqa
-        num_diffusion_steps = gr.Slider(label="Diffusion steps", minimum=1, maximum=100, step=1, value=100)  # noqa
+        num_inference_steps = gr.Slider(label="Inference steps", minimum=1, maximum=256, step=1, value=128)  # noqa
+        num_diffusion_steps = gr.Slider(label="Diffusion steps", minimum=1, maximum=200, step=1, value=100)  # noqa
     adv_opt.__exit__()
     generate = gr.Button("Generate Video", variant="primary", size="lg")
     input_col.__exit__()
 
     # Results.
     result_col, _ = gr.Column().__enter__(), gr.Markdown(header2)
-    preset = gr.Dropdown([p["label"] for p in video_presets], label="Video Preset", value=video_presets[0]["label"])  # noqa
+    preset = gr.Dropdown([p["label"] for p in video_presets], label="Video Preset", value=video_presets[-2]["label"])  # noqa
     motion_flow = gr.Slider(label="Motion Flow", minimum=1, maximum=10, step=1, value=5)
     result = gr.Video(label="Result", show_label=False, autoplay=True)
     result_col.__exit__(), main_row.__exit__()
@@ -180,4 +183,4 @@ if __name__ == "__main__":
         ],
         outputs=[result, seed],
     )
-    app.__exit__(), app.launch(share=False)
+    app.__exit__(), app.launch(share=False,server_name='0.0.0.0')

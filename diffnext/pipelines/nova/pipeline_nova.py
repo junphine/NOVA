@@ -121,6 +121,10 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         if output_type in ("latent", "pt"):
             return outputs["x"]
         outputs["x"] = outputs["x"].cpu().numpy()
+        # add@byron
+        if output_type == "pil" and len(outputs["x"].shape)==5 and outputs["x"].shape[1]==1:
+            outputs["x"] = outputs["x"].squeeze(1)
+        # end@
         output_name = {4: "images", 5: "frames"}[len(outputs["x"].shape)]
         if output_type == "pil" and output_name == "images":
             outputs["x"] = [PIL.Image.fromarray(image) for image in outputs["x"]]
