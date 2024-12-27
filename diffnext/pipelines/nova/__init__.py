@@ -17,3 +17,4 @@
 
 from diffnext.pipelines.nova.pipeline_nova import NOVAPipeline
 from diffnext.pipelines.nova.pipeline_train_t2i import NOVATrainT2IPipeline
+from diffnext.pipelines.nova.pipeline_train_t2v import NOVATrainT2VPipeline

@@ -201,7 +201,7 @@ class Transformer3DModel(nn.Module):
             c = torch.cat([c[0], self.video_encoder.mixer(*c)], 1)
         # 2D masked autoregressive modeling (MAM).
         x = inputs["x"][:, :, :latent_length].transpose(1, 2).flatten(0, 1)
-        z = self.image_encoder.patch_embed(x)
+        z, bs = self.image_encoder.patch_embed(x), bs * latent_length
         pos = self.image_pos_embed.get_pos(1, bs) if self.image_pos_embed else pos
         z = self.image_encoder(self.mask_embed(z), c.reshape(bs, -1, c.size(-1)), pos=pos)
         # 1D token-wise diffusion modeling (MLP).
