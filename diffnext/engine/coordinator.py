@@ -58,7 +58,7 @@ class Coordinator(object):
 
         def locate(last_idx=None):
             files = os.listdir(path)
-            files = list(filter(lambda x: "_iter_" in x and x.endswith(".pth"), files))
+            files = list(filter(lambda x: "_iter_" in x, files))
             file_steps = []
             for i, file in enumerate(files):
                 file_step = int(file.split("_iter_")[-1].split(".")[0])
