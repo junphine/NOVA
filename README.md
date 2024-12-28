@@ -108,19 +108,23 @@ image.save("shiba_inu.jpg")
 <a id="text-to-video-quickstart"></a>
 
 ```python
+import os
 import torch
 from diffnext.pipelines import NOVAPipeline
 from diffnext.utils import export_to_image, export_to_video
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 model_id = "BAAI/nova-d48w1024-osp480"
+low_memory = False
+
 model_args = {"torch_dtype": torch.float16, "trust_remote_code": True}
 pipe = NOVAPipeline.from_pretrained(model_id, **model_args)
 
-# Standard device routine.
-pipe = pipe.to("cuda")
-# Use CPU model offload routine and expandable allocator if OOM.
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-# pipe.enable_model_cpu_offload()
+if low_memory:
+    # Use CPU model offload routine and expandable allocator if OOM.
+    pipe.enable_model_cpu_offload()
+else:
+    pipe = pipe.to("cuda")
 
 # Text to Video
 prompt = "Many spotted jellyfish pulsating under water."
@@ -186,7 +190,6 @@ If you find this repository useful, please consider giving a star ⭐ and citati
 
 ## Acknowledgement
 
-We thank the repositories: [MAE](https://github.com/facebookresearch/mae), [MAR](https://github.com/LTH14/mar), [MaskGIT](https://github.com/google-research/maskgit), [DiT](https://github.com/facebookresearch/DiT), [Open-Sora-Plan](https://github.com/PKU-YuanGroup/Open-Sora-Plan), [CogVideo](https://github.com/THUDM/CogVideo), and [CodeWithGPU](https://github.com/seetacloud/codewithgpu).
-
+We thank the repositories: [MAE](https://github.com/facebookresearch/mae), [MAR](https://github.com/LTH14/mar), [MaskGIT](https://github.com/google-research/maskgit), [DiT](https://github.com/facebookresearch/DiT), [Open-Sora-Plan](https://github.com/PKU-YuanGroup/Open-Sora-Plan), [CogVideo](https://github.com/THUDM/CogVideo), [FLUX](https://github.com/black-forest-labs/flux) and [CodeWithGPU](https://github.com/seetacloud/codewithgpu).
 ## License
 Code and models are licensed under [Apache License 2.0](LICENSE).
