@@ -16,7 +16,7 @@
 """Embedding layers."""
 
 import sys
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 import scipy.stats as stats
@@ -214,15 +214,19 @@ class MaskEmbed(nn.Module):
         self.mask, self.attn_mask = None, None
         self.pred_ids, self.pred_pos, self.generator = None, 0, None
 
-    def get_attn_mask(self, x, c=None, persistent=True) -> torch.Tensor:
+    def get_attn_mask(
+        self, x: Union[torch.Tensor, Tuple[torch.Tensor]], c: torch.Tensor = None, persistent=True
+    ) -> torch.Tensor:
         """Return the attention mask according to inputs."""
         if self.attn_mask is not None and persistent:
             return self.attn_mask
-        t, s = x.shape[1:3] if x.dim() == 4 else (1, x.size(1))
-        d = torch.cat([torch.full([s], i, dtype=torch.float32) for i in range(t)])
-        d = torch.cat([torch.full([c.size(1)], 0, dtype=d.dtype), d]) if c is not None else d
-        self.attn_mask = torch.where(d.unsqueeze(1).ge(d.unsqueeze(0)), 0, -float("inf"))
-        self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device)
+        if isinstance(x, (tuple, list)):
+            d = torch.cat([torch.full(_.shape[1:3], t) for t, _ in enumerate(x)]).flatten()
+        else:
+            d = torch.cat([torch.full([x.size(2)], i) for i in range(x.size(1))])
+        d = torch.cat([torch.full([c.size(1)], 0), d]) if c is not None else d
+        attn_mask = torch.where(d.unsqueeze(1).ge(d.unsqueeze(0)), 0, -float("inf"))
+        self.attn_mask = attn_mask.to(device=self.bos_token.device, dtype=self.bos_token.dtype)
         return self.attn_mask
 
     def get_pred_mask(self, num_preds) -> Tuple[torch.Tensor, torch.Tensor]:

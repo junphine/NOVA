@@ -196,7 +196,7 @@ class Transformer3DModel(nn.Module):
         [setattr(blk.attn, "attn_mask", attn_mask) for blk in self.video_encoder.blocks]
         pos = self.video_pos_embed.get_pos(latent_length, bs) if self.image_pos_embed else pos
         c = self.video_encoder(c.flatten(1, 2), inputs["c"], pos=pos)
-        if hasattr(self.video_encoder, "mixer") and latent_length > 1:
+        if not isinstance(self.video_encoder.mixer, torch.nn.Identity) and latent_length > 1:
             c = c.view(bs, latent_length, -1, c.size(-1)).split([1, latent_length - 1], 1)
             c = torch.cat([c[0], self.video_encoder.mixer(*c)], 1)
         # 2D masked autoregressive modeling (MAM).
