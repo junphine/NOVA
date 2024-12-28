@@ -56,14 +56,10 @@ class Transformer3DModel(nn.Module):
         """Return a tqdm progress bar."""
         return tqdm(iterable) if enable else iterable
 
-    def init_weights(self):
-        """Initialze model weights."""
-        [m.init_weights() if hasattr(m, "init_weights") else None for m in self.children()]
-
     def preprocess(self, inputs: Dict):
         """Preprocess model inputs."""
-        dtype, device = self.dtype, self.device
-        inputs["c"], add_guidance = inputs.get("c", []), inputs.get("guidance_scale", 1) != 1
+        add_guidance = inputs.get("guidance_scale", 1) > 1
+        inputs["c"], dtype, device = inputs.get("c", []), self.dtype, self.device
         if inputs.get("x", None) is None:
             batch_size = inputs.get("batch_size", 1)
             image_size = (self.image_encoder.image_dim,) + self.image_encoder.image_size
@@ -75,21 +71,6 @@ class Transformer3DModel(nn.Module):
             flow, fps = [v + v if (add_guidance and v) else v for v in (flow, fps)]
             inputs["c"].append(self.motion_embed(inputs["c"][-1], flow, fps))
         inputs["c"] = torch.cat(inputs["c"], dim=1) if len(inputs["c"]) > 1 else inputs["c"][0]
-
-    @torch.no_grad()
-    def postprocess(self, outputs: Dict, inputs: Dict):
-        """Postprocess model outputs."""
-        if inputs.get("output_type", "np") == "latent":
-            return outputs
-        x = inputs["vae"].unscale_(outputs.pop("x"))
-        batch_size, vae_batch_size = x.size(0), inputs.get("vae_batch_size", 1)
-        sizes, splits = [vae_batch_size] * (batch_size // vae_batch_size), []
-        sizes += [batch_size - sum(sizes)] if sum(sizes) != batch_size else []
-        for x_split in x.split(sizes) if len(sizes) > 1 else [x]:
-            splits.append(inputs["vae"].decode(x_split).sample)
-        x = torch.cat(splits) if len(splits) > 1 else splits[0]
-        x = x.permute(0, 2, 3, 4, 1) if x.dim() == 5 else x.permute(0, 2, 3, 1)
-        outputs["x"] = x.mul_(127.5).add_(127.5).clamp(0, 255).byte()
 
     def get_losses(self, z: torch.Tensor, x: torch.Tensor, video_shape=None) -> Dict:
         """Return the training losses."""
@@ -174,9 +155,10 @@ class Transformer3DModel(nn.Module):
             c.__setitem__(slice(None), self.mask_embed.bos_token) if states["t"] == 0 else c
             c = self.video_pos_embed(c.add_(time_embed[states["t"]])) if not time_pos else c
             c = torch.cat([c] * 2) if guidance_scale > 1 else c
-            c = self.video_encoder(c, None if states["t"] else inputs["c"], pos=pos)
-            states["c"] = self.video_encoder.mixer(states["*"], c) if states["t"] else c
-            states["*"] = states["*"] if states["t"] else states["c"]
+            c = states["c"] = self.video_encoder(c, None if states["t"] else inputs["c"], pos=pos)
+            if not isinstance(self.video_encoder.mixer, torch.nn.Identity):
+                states["c"] = self.video_encoder.mixer(states["*"], c) if states["t"] else c
+                states["*"] = states["*"] if states["t"] else states["c"]
             if states["t"] == 0 and latents:
                 states["x"].copy_(latents[-1])
             else:

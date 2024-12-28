@@ -17,10 +17,11 @@
 from typing import List
 
 import numpy as np
-import PIL.Image
 import torch
 
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
+
+from diffnext.image_processor import VaeImageProcessor
 from diffnext.pipelines.builder import PIPELINES
 from diffnext.pipelines.nova.pipeline_utils import NOVAPipelineOutput, PipelineMixin
 
@@ -50,6 +51,7 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         self.transformer.sample_scheduler, self.guidance_scale = self.scheduler, 5.0
         self.tokenizer_max_length = self.transformer.text_embed.num_tokens
         self.transformer.text_embed.encoders = [self.tokenizer, self.text_encoder]
+        self.image_processor = VaeImageProcessor()
 
     @torch.no_grad()
     def __call__(
@@ -121,13 +123,9 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         inputs["batch_size"] = len(inputs["prompt"]) // (2 if guidance_scale > 1 else 1)
         inputs["motion_flow"] = [motion_flow] * inputs["batch_size"]
         _, outputs = inputs.pop("self"), self.transformer(inputs)
-        self.transformer.postprocess(outputs, {"vae": self.vae, **inputs})
-        if output_type in ("latent", "pt"):
-            return outputs["x"]
-        outputs["x"] = outputs["x"].cpu().numpy()
+        outputs["x"] = self.image_processor.decode_latents(self.vae, outputs["x"])
         output_name = {4: "images", 5: "frames"}[len(outputs["x"].shape)]
-        if output_type == "pil" and output_name == "images":
-            outputs["x"] = [PIL.Image.fromarray(image) for image in outputs["x"]]
+        outputs["x"] = self.image_processor.postprocess(outputs["x"], output_type)
         return NOVAPipelineOutput(**{output_name: outputs["x"]})
 
     def prepare_latents(
