@@ -13,9 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------
-"""Pipelines."""
+"""Build for data."""
 
-from diffnext.pipelines.builder import build_pipeline
-from diffnext.pipelines.builder import build_diffusion_scheduler
-from diffnext.pipelines.nova import NOVAPipeline
-from diffnext.pipelines.nova import NOVATrainT2IPipeline
+from diffnext.config import cfg
+from diffnext.utils.registry import Registry
+
+LOADERS = Registry("loaders")
+
+
+def build_loader_train(**kwargs):
+    """Build the train loader."""
+    args = {
+        "dataset": cfg.TRAIN.DATASET,
+        "dataset2": cfg.TRAIN.DATASET2,
+        "batch_size": cfg.TRAIN.BATCH_SIZE,
+        "num_threads": cfg.TRAIN.NUM_THREADS,
+        "seed": cfg.RNG_SEED + cfg.GPU_ID,
+        "shuffle": True,
+    }
+    args.update(kwargs)
+    return LOADERS.get(cfg.TRAIN.LOADER)(**args)

@@ -20,6 +20,7 @@ from diffnext.engine.builder import build_model_ema
 from diffnext.engine.builder import build_optimizer
 from diffnext.engine.builder import build_tensorboard
 from diffnext.engine.coordinator import Coordinator
+from diffnext.engine.train_engine import run_train
 from diffnext.engine.utils import apply_ddp
 from diffnext.engine.utils import apply_deepspeed
 from diffnext.engine.utils import count_params

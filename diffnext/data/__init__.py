@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------
-"""Pipelines."""
+"""Data components."""
 
-from diffnext.pipelines.builder import build_pipeline
-from diffnext.pipelines.builder import build_diffusion_scheduler
-from diffnext.pipelines.nova import NOVAPipeline
-from diffnext.pipelines.nova import NOVATrainT2IPipeline
+from diffnext.data.builder import build_loader_train
+from diffnext.data.utils import get_dataset_size

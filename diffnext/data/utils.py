@@ -9,13 +9,24 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, esither express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ------------------------------------------------------------------------
-"""Pipelines."""
+"""Data utilities."""
 
-from diffnext.pipelines.builder import build_pipeline
-from diffnext.pipelines.builder import build_diffusion_scheduler
-from diffnext.pipelines.nova import NOVAPipeline
-from diffnext.pipelines.nova import NOVATrainT2IPipeline
+import os
+import json
+
+
+def get_dataset_size(source):
+    """Return the dataset size."""
+    if source.endswith(".json"):
+        return len(json.load(open(source, "r", encoding="utf-8")))
+    if source.endswith(".txt"):
+        return len(open(source, "r").readlines())
+    meta_file = os.path.join(source, "METADATA")
+    if os.path.exists(meta_file):
+        with open(meta_file, "r") as f:
+            return json.load(f)["entries"]
+    raise ValueError("Unsupported dataset: " + source)
