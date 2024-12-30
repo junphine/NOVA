@@ -166,8 +166,8 @@ class Transformer3DModel(nn.Module):
                 latents.append(states["x"].clone())
         [setattr(blk.attn, "cache_kv", False) for blk in self.video_encoder.blocks]
 
-    def forward_train(self, inputs):
-        """Forward pipeline for training."""
+    def train_video(self, inputs):
+        """Train a batch of videos."""
         # 3D temporal autoregressive modeling (TAM).
         inputs["x"].unsqueeze_(2) if inputs["x"].dim() == 4 else None
         bs, latent_length = inputs["x"].size(0), inputs["x"].size(2)
@@ -195,7 +195,7 @@ class Transformer3DModel(nn.Module):
         self.pipeline_preprocess(inputs)
         self.preprocess(inputs)
         if self.training:
-            return self.forward_train(inputs)
+            return self.train_video(inputs)
         inputs["latents"] = inputs.pop("latents", [])
         self.generate_video(inputs)
         return {"x": torch.stack(inputs["latents"], dim=2)}
