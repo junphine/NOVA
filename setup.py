@@ -106,7 +106,7 @@ setuptools.setup(
     license="Apache License",
     packages=find_packages("diffnext"),
     cmdclass={"build_py": BuildPyCommand, "install": InstallCommand},
-    install_requires=["torch", "transformers", "diffusers", "tqdm"],
+    install_requires=["torch", "diffusers", "transformers", "accelerate", "imageio[ffmpeg]"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",

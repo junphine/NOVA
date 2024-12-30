@@ -31,7 +31,7 @@ _C.TRAIN.DATASET = ""
 _C.TRAIN.DATASET2 = ""
 
 # The loader type for training
-_C.TRAIN.LOADER = "vae_train"
+_C.TRAIN.LOADER = ""
 
 # The number of threads to load train data per GPU
 _C.TRAIN.NUM_THREADS = 4

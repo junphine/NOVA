@@ -23,14 +23,6 @@ import PIL.Image
 import torch
 
 
-def freeze_module(module: torch.nn.Module, trainable=False) -> torch.nn.Module:
-    """Freeze parameters of given module."""
-    module.eval() if not trainable else module.train()
-    for param in module.parameters():
-        param.requires_grad = trainable
-    return module
-
-
 class NOVAPipelineOutput(BaseOutput):
     """Output class for NOVA pipelines.
 

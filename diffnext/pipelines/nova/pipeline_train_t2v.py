@@ -19,8 +19,9 @@ from typing import Dict
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 import torch
 
+from diffnext import engine
 from diffnext.pipelines.builder import PIPELINES, build_diffusion_scheduler
-from diffnext.pipelines.nova.pipeline_utils import PipelineMixin, freeze_module
+from diffnext.pipelines.nova.pipeline_utils import PipelineMixin
 
 
 @PIPELINES.register("nova_train_t2v")
@@ -59,8 +60,8 @@ class NOVATrainT2VPipeline(DiffusionPipeline, PipelineMixin):
         [setattr(blk, "mlp_checkpointing", ckpt_lvl) for blk in self.model.video_encoder.blocks]
         [setattr(blk, "mlp_checkpointing", ckpt_lvl > 1) for blk in self.model.image_encoder.blocks]
         [setattr(blk, "mlp_checkpointing", ckpt_lvl > 2) for blk in self.model.image_decoder.blocks]
-        freeze_module(self.model.text_embed.norm)  # We always use frozen LN.
-        freeze_module(self.model.motion_embed)  # We always use frozen motion embedding.
+        engine.freeze_module(self.model.text_embed.norm)  # We always use frozen LN.
+        engine.freeze_module(self.model.motion_embed)  # We always use frozen motion embedding.
         self.model.pipeline_preprocess = self.preprocess
         self.model.text_embed.encoders = [self.tokenizer, self.text_encoder]
         return self.model.train()
