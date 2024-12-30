@@ -731,8 +731,6 @@ def main(args):
             else:
                 loss = loss_mse.mean()
 
-
-
         # Gather the losses across all processes for logging (if we use distributed training).
         avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
         # avg_loss = accelerator.reduce(loss, reduction="mean")

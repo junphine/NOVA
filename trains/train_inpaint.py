@@ -548,7 +548,7 @@ def main(args):
         start_time = time.time()
 
         try:
-            in_channels = ae_channel_config[args.ae]
+            in_channels = 3
             model_input, masked_input, video_mask = model_input[:, 0:in_channels], model_input[:, in_channels:2 * in_channels], model_input[:, 2 * in_channels:]
         except:
             raise ValueError("masked_x and video_mask is None!")
