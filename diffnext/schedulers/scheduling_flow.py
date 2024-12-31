@@ -73,8 +73,8 @@ class FlowMatchEulerDiscreteScheduler(SchedulerMixin, ConfigMixin):
         return indices[1 if len(indices) > 1 else 0].item()
 
     def sample_timesteps(self, size, device=None):
-        dist = torch.normal(0, 1, size).sigmoid_()
-        return dist.mul_(self.config.num_train_timesteps).to(dtype=torch.int64, device=device)
+        dist = torch.normal(0, 1, size, device=device).sigmoid_()
+        return dist.mul_(self.config.num_train_timesteps).to(dtype=torch.int64)
 
     def set_timesteps(self, num_inference_steps):
         """Sets the discrete timesteps used for the diffusion chain."""
