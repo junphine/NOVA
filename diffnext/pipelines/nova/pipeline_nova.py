@@ -124,8 +124,8 @@ class NOVAPipeline(DiffusionPipeline, PipelineMixin):
         inputs["motion_flow"] = [motion_flow] * inputs["batch_size"]
         _, outputs = inputs.pop("self"), self.transformer(inputs)
         outputs["x"] = self.image_processor.decode_latents(self.vae, outputs["x"])
-        output_name = {4: "images", 5: "frames"}[len(outputs["x"].shape)]
         outputs["x"] = self.image_processor.postprocess(outputs["x"], output_type)
+        output_name = {4: "images", 5: "frames"}[len(outputs["x"].shape)]
         return NOVAPipelineOutput(**{output_name: outputs["x"]})
 
     def prepare_latents(
