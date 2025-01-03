@@ -85,6 +85,7 @@ class NOVATransformer3DModel(Transformer3DModel, ModelMixin, ConfigMixin):
             image_encoder.pos_embed = PosEmbed(image_encoder.embed_dim, image_base_size)
         image_pos_embed = image_pos_embed if rotary_pos_embed else None
         if video_mixer_rank:
+            video_mixer_rank = max(video_mixer_rank, 0)  # Use vanilla AdaLN if ``rank`` < 0.
             video_encoder.mixer = AdaLayerNorm(video_encoder.embed_dim, video_mixer_rank, eps=None)
         super(NOVATransformer3DModel, self).__init__(
             video_encoder=video_encoder,
