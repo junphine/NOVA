@@ -23,6 +23,7 @@ from diffusers.models.modeling_utils import ModelMixin
 
 from diffnext.models.autoencoders.modeling_utils import DecoderOutput
 from diffnext.models.autoencoders.modeling_utils import DiagonalGaussianDistribution
+from diffnext.models.autoencoders.modeling_utils import IdentityDistribution
 
 
 class Attention(nn.Module):
@@ -180,17 +181,19 @@ class AutoencoderKL(ModelMixin, ConfigMixin):
         latents_mean=None,
         latents_std=None,
         force_upcast=True,
+        double_z=True,
         use_quant_conv=True,
         use_post_quant_conv=True,
     ):
         super(AutoencoderKL, self).__init__()
-        self.encoder = Encoder(in_channels, latent_channels, block_out_channels, layers_per_block)
-        self.decoder = Decoder(latent_channels, out_channels, block_out_channels, layers_per_block)
+        channels, layers = block_out_channels, layers_per_block
+        self.encoder = Encoder(in_channels, (1 + double_z) * latent_channels, channels, layers)
+        self.decoder = Decoder(latent_channels, out_channels, channels, layers)
         quant_conv_type = type(self.decoder.conv_in) if use_quant_conv else nn.Identity
         post_quant_conv_type = type(self.decoder.conv_in) if use_post_quant_conv else nn.Identity
-        self.quant_conv = quant_conv_type(2 * latent_channels, 2 * latent_channels, 1)
+        self.quant_conv = quant_conv_type(*([(1 + double_z) * latent_channels] * 2 + [1]))
         self.post_quant_conv = post_quant_conv_type(latent_channels, latent_channels, 1)
-        self.latent_dist = DiagonalGaussianDistribution
+        self.latent_dist = DiagonalGaussianDistribution if double_z else IdentityDistribution
 
     def scale_(self, x) -> torch.Tensor:
         """Scale the input latents."""
@@ -205,7 +208,7 @@ class AutoencoderKL(ModelMixin, ConfigMixin):
     def encode(self, x) -> AutoencoderKLOutput:
         """Encode the input samples."""
         z = self.quant_conv(self.encoder(self.forward(x)))
-        posterior = DiagonalGaussianDistribution(z)
+        posterior = self.latent_dist(z)
         return AutoencoderKLOutput(latent_dist=posterior)
 
     def decode(self, z) -> DecoderOutput:

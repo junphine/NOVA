@@ -24,6 +24,16 @@ class DecoderOutput(BaseOutput):
     sample: torch.Tensor
 
 
+class IdentityDistribution(object):
+    """IdentityGaussianDistribution."""
+
+    def __init__(self, z):
+        self.parameters = z
+
+    def sample(self, generator=None):
+        return self.parameters
+
+
 class DiagonalGaussianDistribution(object):
     """DiagonalGaussianDistribution."""
 
