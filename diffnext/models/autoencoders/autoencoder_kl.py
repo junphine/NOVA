@@ -125,7 +125,7 @@ class Encoder(nn.Module):
         self.mid_block = UNetMidBlock(block_dims[-1])
         self.conv_act = nn.SiLU()
         self.conv_norm_out = nn.GroupNorm(32, block_dims[-1], eps=1e-6)
-        self.conv_out = nn.Conv2d(block_dims[-1], 2 * out_dim, 3, 1, 1)
+        self.conv_out = nn.Conv2d(block_dims[-1], out_dim, 3, 1, 1)
 
     def forward(self, x) -> torch.Tensor:
         x = self.conv_in(x)
