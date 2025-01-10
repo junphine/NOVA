@@ -3,3 +3,5 @@ diffusers
 transformers
 accelerate
 imageio[ffmpeg]
+pyyaml
+scipy

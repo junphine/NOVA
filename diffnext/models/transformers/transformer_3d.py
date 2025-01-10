@@ -166,17 +166,17 @@ class Transformer3DModel(nn.Module):
                 latents.append(states["x"].clone())
         [setattr(blk.attn, "cache_kv", False) for blk in self.video_encoder.blocks]
 
-    def forward_train(self, inputs):
-        """Forward pipeline for training."""
+    def train_video(self, inputs):
+        """Train a batch of videos."""
         # 3D temporal autoregressive modeling (TAM).
         inputs["x"].unsqueeze_(2) if inputs["x"].dim() == 4 else None
         bs, latent_length = inputs["x"].size(0), inputs["x"].size(2)
         c = self.video_encoder.patch_embed(inputs["x"][:, :, : latent_length - 1])
         bov = self.mask_embed.bos_token.expand(bs, 1, c.size(-2), -1)
-        c = self.video_pos_embed(torch.cat([bov, c], dim=1))
-        attn_mask, pos = self.mask_embed.get_attn_mask(c, inputs["c"]), None
-        [setattr(blk.attn, "attn_mask", attn_mask) for blk in self.video_encoder.blocks]
+        c, pos = self.video_pos_embed(torch.cat([bov, c], dim=1)), None
         pos = self.video_pos_embed.get_pos(latent_length, bs) if self.image_pos_embed else pos
+        attn_mask = self.mask_embed.get_attn_mask(c, inputs["c"]) if latent_length > 1 else None
+        [setattr(blk.attn, "attn_mask", attn_mask) for blk in self.video_encoder.blocks]
         c = self.video_encoder(c.flatten(1, 2), inputs["c"], pos=pos)
         if not isinstance(self.video_encoder.mixer, torch.nn.Identity) and latent_length > 1:
             c = c.view(bs, latent_length, -1, c.size(-1)).split([1, latent_length - 1], 1)
@@ -195,7 +195,7 @@ class Transformer3DModel(nn.Module):
         self.pipeline_preprocess(inputs)
         self.preprocess(inputs)
         if self.training:
-            return self.forward_train(inputs)
+            return self.train_video(inputs)
         inputs["latents"] = inputs.pop("latents", [])
         self.generate_video(inputs)
         return {"x": torch.stack(inputs["latents"], dim=2)}
